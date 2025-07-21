@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS courses (
     name VARCHAR(100) NOT NULL
 );
 
+-- Add units column to courses table
+ALTER TABLE courses ADD COLUMN units INT NOT NULL DEFAULT 3;
+
 -- Rooms table (optional, for normalization)
 CREATE TABLE IF NOT EXISTS rooms (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -39,6 +42,9 @@ CREATE TABLE IF NOT EXISTS timetables (
     FOREIGN KEY (lecturer_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
 );
+
+-- Add mode column to specify if lesson is online or physical
+ALTER TABLE timetables ADD COLUMN mode ENUM('online', 'physical') NOT NULL DEFAULT 'physical';
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS notifications (
@@ -104,15 +110,55 @@ INSERT INTO users (name, email, password, role) VALUES
 ('Lecturer Ten', 'lecturer10@example.com', '$2y$10$abcdefghijklmnopqrstuv', 'lecturer');
 -- All passwords are 'password' (hash: $2y$10$abcdefghijklmnopqrstuv) 
 
--- Sample courses
-INSERT INTO courses (code, name) VALUES
-('CSC101', 'Introduction to Computer Science'),
-('CSC102', 'Programming Fundamentals'),
-('CSC201', 'Data Structures'),
-('CSC202', 'Database Systems'),
-('CSC203', 'Web Development'),
-('CSC204', 'Operating Systems'),
-('CSC205', 'Computer Networks'),
-('CSC206', 'Software Engineering'),
-('CSC207', 'Discrete Mathematics'),
-('CSC208', 'Artificial Intelligence'); 
+-- Sample courses for degree programs
+INSERT INTO courses (code, name, unit) VALUES
+-- 🖥️ Information Technology & Computer Science
+('CS001', 'Bachelor of Science in Information Technology', 'Information Technology & Computer Science'),
+('CS002', 'Bachelor of Science in Computer Science', 'Information Technology & Computer Science'),
+('CS003', 'Bachelor of Business Information Technology', 'Information Technology & Computer Science'),
+('CS004', 'Bachelor of Science in Software Engineering', 'Information Technology & Computer Science'),
+('CS005', 'Bachelor of Science in Computer Engineering', 'Information Technology & Computer Science'),
+('CS006', 'Bachelor of Science in Data Science', 'Information Technology & Computer Science'),
+('CS007', 'Bachelor of Science in Artificial Intelligence', 'Information Technology & Computer Science'),
+('CS008', 'Bachelor of Science in Cybersecurity and Digital Forensics', 'Information Technology & Computer Science'),
+('CS009', 'Bachelor of Science in Mobile Computing', 'Information Technology & Computer Science'),
+('CS010', 'Bachelor of Science in Information Systems', 'Information Technology & Computer Science'),
+-- 📈 Business & Management
+('BM001', 'Bachelor of Commerce', 'Business & Management'),
+('BM002', 'Bachelor of Business Administration', 'Business & Management'),
+('BM003', 'Bachelor of Procurement and Logistics', 'Business & Management'),
+('BM004', 'Bachelor of Economics and Statistics', 'Business & Management'),
+('BM005', 'Bachelor of Entrepreneurship and Innovation', 'Business & Management'),
+-- 🧪 Science & Engineering
+('SE001', 'Bachelor of Science in Electrical and Electronics Engineering', 'Science & Engineering'),
+('SE002', 'Bachelor of Science in Mechanical Engineering', 'Science & Engineering'),
+('SE003', 'Bachelor of Science in Civil Engineering', 'Science & Engineering'),
+('SE004', 'Bachelor of Science in Actuarial Science', 'Science & Engineering'),
+('SE005', 'Bachelor of Science in Applied Statistics', 'Science & Engineering'),
+-- 🧠 Education & Arts
+('EA001', 'Bachelor of Education in ICT', 'Education & Arts'),
+('EA002', 'Bachelor of Arts in Communication and Media Studies', 'Education & Arts'),
+('EA003', 'Bachelor of Arts in Sociology or Psychology', 'Education & Arts'),
+('EA004', 'Bachelor of Arts in Criminology and Security Studies', 'Education & Arts'),
+-- 🧑‍⚕️ Health & Life Sciences
+('HL001', 'Bachelor of Science in Nursing', 'Health & Life Sciences'),
+('HL002', 'Bachelor of Medicine and Surgery', 'Health & Life Sciences'),
+('HL003', 'Bachelor of Pharmacy', 'Health & Life Sciences'),
+('HL004', 'Bachelor of Science in Public Health', 'Health & Life Sciences'),
+('HL005', 'Bachelor of Science in Medical Laboratory Science', 'Health & Life Sciences');
+
+-- Sample rooms
+INSERT INTO rooms (name) VALUES
+('Room A'),
+('Room B'),
+('Room C'),
+('Room D'),
+('Room E'); 
+
+-- Enroll all students in course ID 2 (example)
+INSERT IGNORE INTO enrollments (student_id, course_id)
+SELECT id, 2 FROM users WHERE role = 'student'; 
+
+-- Enroll all students in all courses (example)
+INSERT IGNORE INTO enrollments (student_id, course_id)
+SELECT u.id, c.id FROM users u, courses c WHERE u.role = 'student'; 

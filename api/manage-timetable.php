@@ -71,7 +71,7 @@ function notify_students($conn, $timetable_id, $type, $message) {
 
 // Fetch all timetable entries (GET)
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $sql = "SELECT t.id, c.name AS course, u.name AS lecturer, r.name AS room, t.date, t.start_time, t.end_time, t.status
+    $sql = "SELECT t.id, c.name AS course, c.unit AS unit, u.name AS lecturer, r.name AS room, t.date, t.start_time, t.end_time, t.status, t.mode
             FROM timetables t
             LEFT JOIN courses c ON t.course_id = c.id
             LEFT JOIN users u ON t.lecturer_id = u.id
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 // Add new timetable entry (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $required = ['course_id', 'lecturer_id', 'room_id', 'date', 'start_time', 'end_time', 'status'];
+    $required = ['course_id', 'lecturer_id', 'date', 'start_time', 'end_time', 'status', 'mode'];
     foreach ($required as $field) {
         if (empty($_POST[$field])) {
             echo json_encode(['success' => false, 'message' => 'Missing field: ' . $field]);
@@ -97,13 +97,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $course_id = intval($_POST['course_id']);
     $lecturer_id = intval($_POST['lecturer_id']);
-    $room_id = intval($_POST['room_id']);
     $date = sanitize($_POST['date']);
     $start_time = sanitize($_POST['start_time']);
     $end_time = sanitize($_POST['end_time']);
     $status = sanitize($_POST['status']);
-    $stmt = $conn->prepare('INSERT INTO timetables (course_id, lecturer_id, room_id, date, start_time, end_time, status) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $stmt->bind_param('iiissss', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status);
+    $mode = sanitize($_POST['mode']);
+    // Handle room_id: required for physical, NULL for online
+    if ($mode === 'physical') {
+        if (empty($_POST['room_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Room is required for physical classes.']);
+            exit;
+        }
+        $room_id = intval($_POST['room_id']);
+    } else {
+        $room_id = null;
+    }
+    // Backend validation for date and time
+    $now = new DateTime('now', new DateTimeZone('UTC'));
+    $classDate = DateTime::createFromFormat('Y-m-d', $date, new DateTimeZone('UTC'));
+    if ($classDate < new DateTime($now->format('Y-m-d'), new DateTimeZone('UTC'))) {
+        echo json_encode(['success' => false, 'message' => 'You cannot schedule a lesson in the past.']);
+        exit;
+    }
+    if ($classDate->format('Y-m-d') === $now->format('Y-m-d')) {
+        // Compare start time
+        $classTime = DateTime::createFromFormat('Y-m-d H:i', $date . ' ' . $start_time, new DateTimeZone('UTC'));
+        if ($classTime <= $now) {
+            echo json_encode(['success' => false, 'message' => 'The selected time has already passed today.']);
+            exit;
+        }
+    }
+    $stmt = $conn->prepare('INSERT INTO timetables (course_id, lecturer_id, room_id, date, start_time, end_time, status, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->bind_param('iiisssss', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status, $mode);
+    if ($room_id === null) {
+        $stmt->bind_param('iissssss', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status, $mode);
+    } else {
+        $stmt->bind_param('iiisssss', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status, $mode);
+    }
     if ($stmt->execute()) {
         echo json_encode(['success' => true, 'message' => 'Timetable entry added.']);
     } else {
@@ -117,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Edit timetable entry (PUT)
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     parse_str(file_get_contents('php://input'), $_PUT);
-    $required = ['id', 'course_id', 'lecturer_id', 'room_id', 'date', 'start_time', 'end_time', 'status'];
+    $required = ['id', 'course_id', 'lecturer_id', 'room_id', 'date', 'start_time', 'end_time', 'status', 'mode'];
     foreach ($required as $field) {
         if (empty($_PUT[$field])) {
             echo json_encode(['success' => false, 'message' => 'Missing field: ' . $field]);
@@ -132,8 +162,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $start_time = sanitize($_PUT['start_time']);
     $end_time = sanitize($_PUT['end_time']);
     $status = sanitize($_PUT['status']);
-    $stmt = $conn->prepare('UPDATE timetables SET course_id=?, lecturer_id=?, room_id=?, date=?, start_time=?, end_time=?, status=? WHERE id=?');
-    $stmt->bind_param('iiissssi', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status, $id);
+    $mode = sanitize($_PUT['mode']);
+    $stmt = $conn->prepare('UPDATE timetables SET course_id=?, lecturer_id=?, room_id=?, date=?, start_time=?, end_time=?, status=?, mode=? WHERE id=?');
+    $stmt->bind_param('iiisssssi', $course_id, $lecturer_id, $room_id, $date, $start_time, $end_time, $status, $mode, $id);
     if ($stmt->execute()) {
         // Notify students if class is cancelled or changed
         if ($status === 'cancelled') {

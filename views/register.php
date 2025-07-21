@@ -17,14 +17,6 @@
                     <input type="password" class="form-control" id="password" name="password" required>
                 </div>
                 <div class="form-group">
-                    <label for="role">Role:</label>
-                    <select class="form-control" id="role" name="role" required>
-                        <option value="student">Student</option>
-                        <option value="lecturer">Lecturer</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <div class="form-group">
                     <label for="phone">Phone (optional):</label>
                     <input type="text" class="form-control" id="phone" name="phone">
                 </div>

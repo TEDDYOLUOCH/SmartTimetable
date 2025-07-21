@@ -5,8 +5,7 @@ function nav_active($path) {
     return strpos($_SERVER['REQUEST_URI'], $path) !== false ? 'active' : '';
 }
 // Set base path for links
-$base = '';
-if (strpos($_SERVER['REQUEST_URI'], 'SCHOOL PROJECT') !== false) $base = '/SCHOOL%20PROJECT/';
+$base = '/SmartTimetable/'; // <-- Change this if your folder name is different
 ?>
 <style>
     .navbar-custom {
@@ -58,7 +57,7 @@ if (strpos($_SERVER['REQUEST_URI'], 'SCHOOL PROJECT') !== false) $base = '/SCHOO
         <?php endif; ?>
         <?php if (in_array($user['role'], ['admin', 'lecturer'])): ?>
           <li class="nav-item <?php echo nav_active('views/manage-timetable.php'); ?>"><a class="nav-link" href="<?php echo $base; ?>views/manage-timetable.php">Manage Timetable</a></li>
-          <li class="nav-item <?php echo nav_active('admin/user-management.php'); ?>"><a class="nav-link" href="<?php echo $base; ?>admin/user-management.php">User/Enrollment Management</a></li>
+          <li class="nav-item <?php echo nav_active('admin/user-management.php'); ?>"><a class="nav-link" href="<?php echo $base; ?>admin/user-management.php">User &amp; Enrollment Management</a></li>
           <li class="nav-item <?php echo nav_active('views/analytics.php'); ?>"><a class="nav-link" href="<?php echo $base; ?>views/analytics.php">Analytics</a></li>
         <?php endif; ?>
       <?php endif; ?>

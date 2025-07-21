@@ -8,9 +8,38 @@ if (!in_array(current_user()['role'], ['admin', 'lecturer'])) {
 include '../templates/header.php';
 require_once '../includes/db_connect.php';
 
-// Fetch all students and courses
+// Unit/field options
+$unit_options = [
+    "Information Technology & Computer Science",
+    "Business & Management",
+    "Science & Engineering",
+    "Education & Arts",
+    "Health & Life Sciences"
+];
+
+// Handle new course creation
+$course_msg = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_course'])) {
+    $code = trim($_POST['code'] ?? '');
+    $name = trim($_POST['name'] ?? '');
+    $unit = trim($_POST['unit'] ?? '');
+    if ($code && $name && $unit) {
+        $stmt = $conn->prepare("INSERT INTO courses (code, name, unit) VALUES (?, ?, ?)");
+        $stmt->bind_param('sss', $code, $name, $unit);
+        if ($stmt->execute()) {
+            $course_msg = '<span style="color:green;">Course added successfully!</span>';
+        } else {
+            $course_msg = '<span style="color:red;">Error: ' . htmlspecialchars($stmt->error) . '</span>';
+        }
+        $stmt->close();
+    } else {
+        $course_msg = '<span style="color:red;">All fields are required.</span>';
+    }
+}
+
+// Fetch all students and courses (with unit)
 $students = $conn->query("SELECT id, name, email FROM users WHERE role='student' ORDER BY name");
-$courses = $conn->query("SELECT id, name FROM courses ORDER BY name");
+$courses = $conn->query("SELECT id, code, name, unit FROM courses ORDER BY name");
 
 // For select options as arrays
 function fetch_options($result) {
@@ -19,13 +48,56 @@ function fetch_options($result) {
     return $arr;
 }
 $student_opts = fetch_options($conn->query("SELECT id, name, email FROM users WHERE role='student' ORDER BY name"));
-$course_opts = fetch_options($conn->query("SELECT id, name FROM courses ORDER BY name"));
+$course_opts = fetch_options($conn->query("SELECT id, name, unit FROM courses ORDER BY name"));
 ?>
 <div class="container" style="max-width:1000px;margin:40px auto;">
     <div class="card shadow mt-5">
         <div class="card-body">
-            <h2 class="card-title mb-4">User & Enrollment Management</h2>
-            <p class="lead">Enroll students in courses, view and manage current enrollments, or import enrollments in bulk.</p>
+            <h2 class="card-title mb-4">Course Management</h2>
+            <form method="POST" class="mb-4">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <label>Course Code:</label>
+                        <input type="text" class="form-control" name="code" required>
+                    </div>
+                    <div class="col-md-5 mb-2">
+                        <label>Course Name:</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label>Unit/Field:</label>
+                        <select class="form-control" name="unit" required>
+                            <option value="">Select Field</option>
+                            <?php foreach($unit_options as $unit): ?>
+                                <option value="<?php echo htmlspecialchars($unit); ?>"><?php echo htmlspecialchars($unit); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" name="add_course" class="btn btn-success mt-2">Add Course</button>
+                <span style="margin-left:15px;"><?php echo $course_msg; ?></span>
+            </form>
+            <h5 class="mb-3">All Courses</h5>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered table-sm bg-white">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Code</th>
+                            <th>Name</th>
+                            <th>Unit/Field</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($courses as $c): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($c['code']); ?></td>
+                                <td><?php echo htmlspecialchars($c['name']); ?></td>
+                                <td><?php echo htmlspecialchars($c['unit']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
             <hr>
             <h5 class="mb-3">Enroll a Student in Courses</h5>
             <form id="enrollForm" class="mb-4">
@@ -43,7 +115,7 @@ $course_opts = fetch_options($conn->query("SELECT id, name FROM courses ORDER BY
                         <label>Course(s):</label>
                         <select class="form-control" name="course_ids[]" id="course_ids" multiple required>
                             <?php foreach($course_opts as $c): ?>
-                                <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['name']); ?></option>
+                                <option value="<?php echo $c['id']; ?>"><?php echo htmlspecialchars($c['name']) . ' (' . htmlspecialchars($c['unit']) . ')'; ?></option>
                             <?php endforeach; ?>
                         </select>
                         <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple courses.</small>
